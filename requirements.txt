@@ -1,0 +1,8 @@
+numpy
+pandas
+streamlit
+matplotlib
+scipy
+plotly
+openpyxl  # Necesario para leer archivos Excel (.xlsx)
+xlrd  # Para archivos .xls (opcional)
