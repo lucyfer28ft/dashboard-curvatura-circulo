@@ -1,11 +1,12 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
-import matplotlib.pyplot as plt
 from scipy.stats import norm, shapiro, ks_2samp, kurtosis, skew
 import plotly.express as px
 from scipy.spatial import distance
+import plotly.graph_objects as go
 
+st.set_page_config(layout="wide")
 
 
 #Calcular radio de curvatura a partir de tres puntos
@@ -84,6 +85,8 @@ if archivo:
     if not all(col in df.columns for col in columnas_requeridas):
         st.error(f"🚨 El archivo debe contener las columnas: {columnas_requeridas}")
     else:
+
+        st.markdown("<br>", unsafe_allow_html=True)
 
 
         # Filtrar registros válidos
@@ -178,6 +181,8 @@ if archivo:
         df = df.drop(["x0", "x1", "x2", "y0", "y1", "y2" ], axis=1)
         st.dataframe(df)
 
+        st.markdown("<br>", unsafe_allow_html=True)
+
 
 
         #ESTADÍSTICAS CLAVE
@@ -229,6 +234,8 @@ if archivo:
         st.write("·**Asimetría**: mide cuán simétrica es la distribución de los datos respecto a la media. ( ·**0** → Distribución simétrica, como la normal,    ·**Negativo (< 0)** → Sesgo a la izquierda (cola más larga a la izquierda, la distribución tiene más valores menores a la media),   ·**Positivo (> 0)** → Sesgo a la derecha (cola más larga a la derecha, la distribución tiene más valores mayores a la media)).")
         st.write("·**Curtosis**: mide si los datos tienen colas más o menos pesadas en comparación con una distribución normal. (**0 o cercano a 0** → Mesocúrtica (Distribución normal, colas estándar)., **Negativo (< 0)** → Platicúrtica (Colas ligeras, distribución más plana, datos más dispersos, sin valores extremos), **Positivo (> 0)** → Leptocúrtica (Colas pesadas, picos más pronunciados, es decir, muchos valores extremos, lo que sugiere casos atípicos (outliers))). ")
 
+        st.markdown("<br>", unsafe_allow_html=True)
+
 
         # Interpretar desviación
         def interpretar_desviacion(media, desviacion):
@@ -258,6 +265,8 @@ if archivo:
 
         interpretar_desviacion(media, desviacion)
 
+        st.markdown("<br>", unsafe_allow_html=True)
+
         # Mostrar percentiles
         st.markdown("### 📌 Percentiles del Radio Medio de Curvatura")
         col7, col8, col9 = st.columns(3)
@@ -272,6 +281,8 @@ if archivo:
         fig = px.histogram(df, x="Radio de curvatura", nbins=20, marginal="rug",
                            title="Histograma de la Distribución del Radio Medio de Curvatura", color_discrete_sequence=["red"])
         st.plotly_chart(fig)
+
+        st.markdown("<br>", unsafe_allow_html=True)
 
         # Resultados de las pruebas de normalidad
         st.markdown("### 🧪 Pruebas de Normalidad")
@@ -294,116 +305,207 @@ if archivo:
 
         st.plotly_chart(fig_hist)
 
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+
         # Análisis estadístico según los tamaños de la placa
 
         st.title("Análisis estadístico según los tamaños de la placa")
 
+        # Calcular estadísticas clave: media, mínimo y máximo
+        media_por_placa = df.groupby(placa)["Radio de curvatura"].agg(["mean", "min", "max"]).reset_index()
 
+        # Renombrar columnas
+        media_por_placa.rename(columns={
+            placa: "Placa Elevadora",
+            "mean": "Media Radio de Curvatura",
+            "min": "Mínimo Radio de Curvatura",
+            "max": "Máximo Radio de Curvatura"
+        }, inplace=True)
 
-        # Calcular la media de los radios de curvatura por cada tamaño de placa
-        media_por_placa = df.groupby(placa)["Radio de curvatura"].mean()
+        # Título en Streamlit
+        st.subheader("Resumen de Radio de Curvatura por Placa Elevadora")
 
-        st.subheader("Media de Radio de Curvatura por Medida de Placa")
-        st.dataframe(media_por_placa)  # O usa st.table(media_por_placa) para un formato más compacto
+        # Mostrar la tabla en Streamlit
+        st.dataframe(media_por_placa)
 
-        # Crear figura
-        fig, ax = plt.subplots(figsize=(8, 6))
+        # Crear gráfico interactivo con Plotly
+        fig = px.scatter(df, x=placa, y="Radio de curvatura", opacity=0.6,
+                         labels={"Medida de la Placa": "Placa Elevadora",
+                                 "Radio de curvatura": "Radio de Curvatura (cm)"},
+                         title="Distribución de Radios de Curvatura según Placa Elevadora")
 
-        # Graficar distribución de los radios de curvatura
-        ax.scatter(df[placa], df["Radio de curvatura"], alpha=0.5,
-                   label="Radios individuales")
+        # Agregar la media al gráfico
+        fig.add_scatter(x=media_por_placa["Placa Elevadora"],
+                        y=media_por_placa["Media Radio de Curvatura"],
+                        mode="lines+markers", line=dict(color="red"), name="Media por placa")
 
-        # Graficar medias de radio por medida de placa
-        ax.plot(media_por_placa.index, media_por_placa.values, marker='o', linestyle='-', color='red',
-                label="Media por placa")
+        # Agregar el mínimo al gráfico
+        fig.add_scatter(x=media_por_placa["Placa Elevadora"],
+                        y=media_por_placa["Mínimo Radio de Curvatura"],
+                        mode="lines+markers", line=dict(color="blue"), name="Mínimo por placa")
 
-        # Configuración del gráfico
-        ax.set_xlabel("Medida de la Placa (cm)")
-        ax.set_ylabel("Radio de Curvatura (cm)")
-        ax.set_title("Distribución de Radios de Curvatura según Medida de la Placa")
-        ax.legend()
-        ax.grid(True)
+        # Agregar el máximo al gráfico
+        fig.add_scatter(x=media_por_placa["Placa Elevadora"],
+                        y=media_por_placa["Máximo Radio de Curvatura"],
+                        mode="lines+markers", line=dict(color="green"), name="Máximo por placa")
 
         # Mostrar gráfico en Streamlit
-        st.pyplot(fig)
+        st.plotly_chart(fig)
 
 
+        #Elegir dos radios estandar y decidir para que medidas de placa unos y para que medidas de placa otros
+
+        # Ordenar por medida de placa
+        media_por_placa = media_por_placa.sort_values(by="Placa Elevadora")
+
+        # Cálculo del salto de radio promedio entre medidas consecutivas
+        media_por_placa["Delta Media"] = media_por_placa["Media Radio de Curvatura"].diff()
+
+        # Mostrar tabla para explorar
+        st.subheader("📐 Clasificación de Placas Elevadoras según Radio de Curvatura Promedio")
+        st.write("""📌 La decisión se basa en cómo cambia el radio de curvatura promedio conforme aumenta la medida de la placa elevadora.
+Al ordenar las placas por tamaño y analizar la media de los radios de curvatura, buscamos el punto donde se produce el mayor salto entre dos placas consecutivas.
+Ese salto indica un cambio estructural significativo en la anatomía o en la forma en que se comportan las costillas, lo que justifica usar dos radios estándar diferentes:
+
+Uno para placas más pequeñas (donde el tórax es más cerrado o curvo).
+Otro para placas más grandes (donde el tórax tiende a ser más ancho y plano).""")
+
+        st.write("### 📊 Análisis de Transiciones")
+        st.dataframe(media_por_placa)
+
+        st.write("""📉 La "media delta" es simplemente la diferencia entre las medias de radio de curvatura de una placa y la siguiente en tamaño.
+        Sirve para detectar cuándo hay un cambio brusco entre dos medidas de placa.
+        Ese salto nos ayuda a identificar el punto en que deberíamos cambiar de un radio estándar pequeño a uno grande.""")
+
+        # Buscar el mayor salto de radio medio entre placas consecutivas
+        mayor_salto = media_por_placa["Delta Media"].abs().idxmax()
+        corte = media_por_placa.loc[mayor_salto, "Placa Elevadora"]
+
+        # Dividir entre placas chicas y grandes según ese punto de corte
+        placas_chicas = media_por_placa[media_por_placa["Placa Elevadora"] <= corte]
+        placas_grandes = media_por_placa[media_por_placa["Placa Elevadora"] > corte]
+
+        # Calcular radios estándar
+        radio_pequeno_estandar = round(placas_chicas["Media Radio de Curvatura"].mean(), 2)
+        radio_grande_estandar = round(placas_grandes["Media Radio de Curvatura"].mean(), 2)
+
+        # Mostrar decisión
+        st.markdown(f"""
+        ### ✅ Recomendación de Radios Estándar
+
+        - 🔸 Para placas elevadoras de **{placas_chicas['Placa Elevadora'].min()} mm a {corte} mm** → usar **radio estándar pequeño ≈ {radio_pequeno_estandar} cm**  
+        - 🔹 Para placas elevadoras de **mayores a {corte} mm** → usar **radio estándar grande ≈ {radio_grande_estandar} cm**
+        """)
+
+        st.write("""La recomendación del radio estándar se basa en calcular el promedio de los radios de curvatura reales dentro de cada grupo (placas pequeñas y grandes).
+        Así, el radio estándar pequeño representa bien a los pacientes con placas menores, y el radio estándar grande, a los que usan placas mayores.
+        Esto permite usar valores representativos y funcionales, adaptados a la anatomía real de cada grupo.""")
+
+
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+
+
+
+        #Visualización del radio de curvatura de un paciente seleccionado
+
+        # Título general
+        st.title("Visualización del Radio de Curvatura en un Paciente")
 
         # Selección de paciente
-        st.title("Visualización de la Elipse corregida")
         selected_paciente = st.selectbox("Selecciona un paciente:", df[nombre_carpeta])
-
-
 
         # Obtener valores del paciente seleccionado
         dfp = df[df[nombre_carpeta] == selected_paciente].iloc[0]
 
-
-
-        #Mostrar datos de interés del paciente seleccionado
+        # Mostrar datos clave
         st.markdown("### 📌 Datos de interés del paciente")
-        col4,col5 = st.columns(2)
-        col4.metric("**Radio de curvatura**", f"{dfp["Radio de curvatura"]} cm")
+        col4, col5 = st.columns(2)
+        col4.metric("**Radio de curvatura**", f"{dfp['Radio de curvatura']} cm")
         col5.metric("Longitud Placa", f"{dfp[placa] / 10} cm")
 
-
         col2, col3 = st.columns(2)
-        col2.metric("Eje Menor", f"{dfp["Eje Menor"]} cm")
-        col3.metric("Sobrecorrección", f"{dfp["Sobrecorrección (cm)"]} cm")
+        col2.metric("Eje Menor", f"{dfp['Eje Menor']} cm")
+        col3.metric("Sobrecorrección", f"{dfp['Sobrecorrección (cm)']} cm")
 
-
-
-
-
-        #Graficar radio para cada paciente
-
-
+        # Botón para calcular
         if st.button("Calcular"):
-
-            # Valores dados (en cm)
-            c = dfp[transv]  # Diámetro transversal
-            d = dfp["Eje Menor corregido"]  # Diámetro anteroposterior con sobrecorrección
-
-            # Convertir el radio a flotante
+            # Parámetros
+            c = dfp[transv]
+            d = dfp["Eje Menor corregido"]
             r_curvatura = float(dfp["Radio de curvatura"])
 
-            # Definir puntos de referencia
-            p1 = x0, y0 = -dfp[placa] / 20, dfp["Eje Menor"]
-            p2 = x1, y1 = 0, dfp["Eje Menor corregido"]
-            p3 = x2, y2 = dfp[placa] / 20, dfp["Eje Menor"]
+            # Puntos extremos
+            x0, y0 = -dfp[placa] / 20, dfp["Eje Menor"]
+            x1, y1 = 0, dfp["Eje Menor corregido"]
+            x2, y2 = dfp[placa] / 20, dfp["Eje Menor"]
+
 
             # Calcular centro del círculo
-            centro_circulo = calcular_centro_circulo(p1, p2, p3)
-            C_x = centro_circulo[0]
-            C_y = centro_circulo[1]
+            def calcular_centro_circulo(p1, p2, p3):
+                A = np.array([
+                    [2 * (p2[0] - p1[0]), 2 * (p2[1] - p1[1])],
+                    [2 * (p3[0] - p2[0]), 2 * (p3[1] - p2[1])]
+                ])
+                b = np.array([
+                    p2[0] ** 2 - p1[0] ** 2 + p2[1] ** 2 - p1[1] ** 2,
+                    p3[0] ** 2 - p2[0] ** 2 + p3[1] ** 2 - p2[1] ** 2
+                ])
+                centro = np.linalg.solve(A, b)
+                return centro
 
 
+            centro_circulo = calcular_centro_circulo((x0, y0), (x1, y1), (x2, y2))
+            C_x, C_y = centro_circulo
 
-            # Definir función para dibujar el círculo con centro en (C_x, C_y)
+
+            # Función del círculo (parte superior)
             def f(x, r, C_y):
                 return C_y + np.sqrt(np.maximum(0, r ** 2 - (x - C_x) ** 2))
 
 
-            x = np.linspace(x0, x2, 300)
+            x_vals = np.linspace(x0, x2, 300)
+            y_vals = f(x_vals, r_curvatura, C_y)
 
-            fig, ax = plt.subplots(figsize=(8, 6))
-            ax.plot(x, f(x, r_curvatura, C_y), label="Círculo correspondiente al radio de curvatura calculado",
-                    linestyle="dashed")
+            # Crear gráfico interactivo
+            fig = go.Figure()
 
-            # Puntos de referencia
-            ax.scatter([x0, x2], [y0, y2], color="blue", label="Puntos extremos de la placa")
-            ax.scatter([x1], [y1], color="red", label="Esternón")
+            # Círculo (línea discontinua)
+            fig.add_trace(go.Scatter(
+                x=x_vals, y=y_vals,
+                mode='lines',
+                line=dict(dash='dash', color='black'),
+                name="Círculo del radio de curvatura"
+            ))
 
-            # Configuración del gráfico
-            ax.set_xlabel("Ancho (cm)")
-            ax.set_ylabel("Altura (cm)")
-            ax.axhline(0, color='black', linewidth=0.5)
-            ax.axvline(0, color='black', linewidth=0.5)
-            ax.legend()
-            ax.set_title("Círculo correspondiente al radio de curvatura calculado")
-            ax.grid(True)
+            # Puntos extremos (placa)
+            fig.add_trace(go.Scatter(
+                x=[x0, x2], y=[y0, y2],
+                mode='markers',
+                marker=dict(color='blue', size=10),
+                name="Extremos de la placa"
+            ))
 
-            st.pyplot(fig)
+            # Esternón
+            fig.add_trace(go.Scatter(
+                x=[x1], y=[y1],
+                mode='markers',
+                marker=dict(color='red', size=12),
+                name="Esternón"
+            ))
+
+            # Ejes guía (rejilla más marcada) y a escala
+            fig.update_layout(
+                title="Círculo correspondiente al radio de curvatura calculado",
+                xaxis=dict(title="Ancho (cm)", showgrid=True, dtick=1, zeroline=True),
+                yaxis=dict(title="Altura (cm)", showgrid=True, dtick=1, zeroline=True, scaleanchor="x"),
+                height=400,
+                plot_bgcolor='rgba(0,0,0,0)'
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
 
 
 
